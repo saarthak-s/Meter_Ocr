@@ -1,0 +1,73 @@
+# =========================
+# Python environment
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Datasets
+# =========================
+dataset/
+datasets/
+data/
+
+# =========================
+# YOLO training outputs
+# =========================
+runs/
+runs/detect/
+
+# =========================
+# Model weights
+# =========================
+models/
+models/*.pt
+models/*.pth
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# =========================
+# Generated results
+# =========================
+batch_results.json
+outputs/
+results/
+
+# =========================
+# Label Studio artifacts
+# =========================
+ai_annotations.json
+ai_annotations.label_config.xml
+
+# =========================
+# Python cache
+# =========================
+__pycache__/
+*.py[cod]
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
