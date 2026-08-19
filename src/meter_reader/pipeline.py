@@ -3,6 +3,7 @@ import cv2
 import json
 import logging
 import argparse
+import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 from meter_reader.ocr_engine import MeterOCREngine
@@ -73,9 +74,18 @@ class MeterPipeline:
 
                 # OpenCV Preprocessing for OCR
                 gray_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-                contrast_crop = cv2.convertScaleAbs(gray_crop, alpha=1.3, beta=0)
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                enhanced_crop = clahe.apply(gray_crop)
+
+                # 2. Morphological Thickening (Connects gaps in 7-segment digital fonts)
+                # Note: Because the digits are dark on a light background, eroding 
+                # the bright pixels effectively thickens the dark lines.
+                kernel = np.ones((1, 1), np.uint8)
+                thick_crop = cv2.erode(enhanced_crop, kernel, iterations=1)
+
+                # 3. Add padding to help PaddleOCR find the edges
                 padded_crop = cv2.copyMakeBorder(
-                    contrast_crop, 15, 15, 15, 15, 
+                    thick_crop, 15, 15, 15, 15, 
                     cv2.BORDER_CONSTANT, value=255
                 )
 
