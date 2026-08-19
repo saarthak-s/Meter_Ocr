@@ -6,6 +6,22 @@ image, each region is cropped and preprocessed, and
 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) extracts the text,
 which is then parsed into a clean numeric reading and serial number.
 
+## 📦 Resources
+
+- **Dataset (327 labeled meter images):** [Kaggle Dataset — meter_data](https://www.kaggle.com/datasets/saarthaksrivastav/meter-data)
+- **YOLOv8 training notebook (detector training + evaluation):** [Kaggle Notebook — meter_ocr](https://www.kaggle.com/code/saarthaksrivastav/meter-ocr)
+- **Trained YOLO detector weights & run outputs:** [Notebook Output](https://www.kaggle.com/code/saarthaksrivastav/meter-ocr/output)
+
+The dataset and trained detector weights are intentionally excluded
+from this repository (see `.gitignore`) and hosted on Kaggle instead,
+where the training run, logs, and evaluation output can be inspected
+directly.
+
+> **Note:** the Kaggle notebook covers only the YOLOv8 **detector**
+> (localizing the reading and serial-number regions). PaddleOCR is used
+> off-the-shelf for text recognition and is not fine-tuned or retrained
+> as part of this project.
+
 ## How it works
 
 1. **Detect** — a YOLOv8 model (`ultralytics`) finds two classes of
@@ -80,6 +96,11 @@ names:
   0: meter_reading
   1: serial_number
 ```
+
+The raw, labeled dataset is published on Kaggle:
+[meter_data](https://www.kaggle.com/datasets/saarthaksrivastav/meter-data).
+Download it and place it under `dataset/` to reproduce the split and
+training steps below.
 
 The dataset (327 images) was built using an AI-assisted labeling
 workflow:
@@ -189,6 +210,11 @@ set yielded:
 | mAP@50 | 89.9% |
 | mAP@50-95 | 71.2% |
 | Average inference confidence | > 85% across diverse real-world conditions |
+
+*Full YOLO detector training run, logs, and evaluation output are
+available in the
+[Kaggle notebook](https://www.kaggle.com/code/saarthaksrivastav/meter-ocr).
+(This covers detection only — see the note above on OCR scope.)*
 
 ### 2. End-to-end OCR success rate
 
