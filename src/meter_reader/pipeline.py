@@ -1,12 +1,13 @@
 # src/meter_reader/pipeline.py
 import cv2
-import numpy as np
+import json
+import argparse
 from pathlib import Path
 from ultralytics import YOLO
 from src.meter_reader.ocr_engine import MeterOCREngine
 
 class MeterPipeline:
-    def __init__(self, yolo_model_path: str = "models/best.pt"):
+    def __init__(self, yolo_model_path: str):
         print(f"Loading YOLO detector from {yolo_model_path}...")
         self.detector = YOLO(yolo_model_path)
         print("Loading OCR Engine...")
@@ -39,7 +40,7 @@ class MeterPipeline:
 
             h, w, _ = img.shape
             
-            # 1. INCREASE PADDING TO 5% (Fixes the cut-off '9')
+            # Pad by 5%
             pad_x = int((x2 - x1) * 0.05)
             pad_y = int((y2 - y1) * 0.05)
             x1_pad, y1_pad = max(0, x1 - pad_x), max(0, y1 - pad_y)
@@ -47,14 +48,9 @@ class MeterPipeline:
 
             crop = img[y1_pad:y2_pad, x1_pad:x2_pad]
 
-            # 2. OPENCV PREPROCESSING FOR OCR
-            # Convert to grayscale to remove the green LCD background noise
+            # OpenCV Preprocessing for OCR
             gray_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-            
-            # Boost the contrast to make faded digits pop
             contrast_crop = cv2.convertScaleAbs(gray_crop, alpha=1.3, beta=0)
-            
-            # Add a solid white border (OCR needs whitespace to see edge characters)
             padded_crop = cv2.copyMakeBorder(
                 contrast_crop, 15, 15, 15, 15, 
                 cv2.BORDER_CONSTANT, value=255
@@ -80,13 +76,24 @@ class MeterPipeline:
 
         return extracted_data
 
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Run the Meter OCR pipeline on a directory of images.")
+    p.add_argument("--model", default="models/best.pt", help="Path to the trained YOLO weights")
+    p.add_argument("--input-dir", default="dataset/processed/images/val", help="Directory containing images to process")
+    p.add_argument("--output", default="batch_results.json", help="Path to save the output JSON results")
+    return p
+
+
 if __name__ == "__main__":
-    pipeline = MeterPipeline(yolo_model_path="models/best.pt")
-    test_image_dir = Path("dataset/processed/images/val")
+    args = build_parser().parse_args()
+    
+    pipeline = MeterPipeline(yolo_model_path=args.model)
+    test_image_dir = Path(args.input_dir)
     sample_images = list(test_image_dir.glob("*.jpg"))
 
     if not sample_images:
-        print("No test images found.")
+        print(f"No test images found in {test_image_dir.absolute()}")
     else:
         print(f"\n--- Found {len(sample_images)} images. Starting Batch Processing ---")
         
@@ -95,17 +102,12 @@ if __name__ == "__main__":
             print(f"Processing {img_path.name}...")
             try:
                 result = pipeline.process_image(img_path)
-                
-                # Add the filename so we know which result belongs to which image
                 result["filename"] = img_path.name 
                 all_results.append(result)
-                
             except Exception as e:
                 print(f"Error processing {img_path.name}: {e}")
 
-        # Save everything to a master JSON file
-        output_file = Path("batch_results.json")
-        import json
+        output_file = Path(args.output)
         with open(output_file, "w") as f:
             json.dump(all_results, f, indent=4)
             

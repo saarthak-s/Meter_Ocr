@@ -1,42 +1,59 @@
-# src/meter_reader/auto_label.py
-from ultralytics import YOLO
+# src/meter_reader/auto-labelling.py
+import argparse
 from pathlib import Path
+from ultralytics import YOLO
 
-def main():
-    # Load the draft model you just finished training
-    model = YOLO('runs/detect/meter_detector-2/weights/best.pt')
-
-    # Point directly to your dataset folders
-    image_dir = Path("dataset/images")
-    label_dir = Path("dataset/labels")
-    
-    # Ensure the labels directory exists
-    label_dir.mkdir(parents=True, exist_ok=True)
-
-    count = 0
-    # Loop through all jpg and png files
-    image_files = list(image_dir.glob("*.jpg")) + list(image_dir.glob("*.png"))
-    
-    for img_path in image_files:
-        label_path = label_dir / f"{img_path.stem}.txt"
-
-        # Skip images you already manually labeled (protects your 50 images!)
-        if label_path.exists():
-            continue
-
-        print(f"Predicting boxes for {img_path.name}...")
-        results = model(img_path)[0]
-        
-        # Write coordinates to YOLO format
-        with open(label_path, "w") as f:
-            for box in results.boxes:
-                cls_id = int(box.cls[0])
-                x_c, y_c, w, h = box.xywhn[0].tolist() 
-                f.write(f"{cls_id} {x_c} {y_c} {w} {h}\n")
-        
-        count += 1
-
-    print(f"\nAuto-labeling complete! Generated boxes for {count} remaining images.")
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Auto-label images using a draft YOLO model.")
+    p.add_argument("--draft-model", default="runs/detect/meter_detector-2/weights/best.pt", help="Path to the draft YOLO weights")
+    p.add_argument("--images-dir", default="dataset/images", help="Directory containing unlabeled images")
+    p.add_argument("--labels-dir", default="dataset/labels", help="Directory to save generated YOLO labels")
+    p.add_argument("--conf", type=float, default=0.5, help="Confidence threshold for auto-labeling")
+    return p
 
 if __name__ == "__main__":
-    main()
+    args = build_parser().parse_args()
+    
+    img_dir = Path(args.images_dir)
+    lbl_dir = Path(args.labels_dir)
+    lbl_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Loading draft model from {args.draft_model}...")
+    try:
+        model = YOLO(args.draft_model)
+    except FileNotFoundError:
+        print(f"❌ Error: Draft model not found at {args.draft_model}")
+        print("Please train a draft model first or specify the correct path using --draft-model")
+        exit(1)
+
+    images = list(img_dir.glob("*.jpg"))
+    if not images:
+        print(f"No images found in {img_dir.absolute()}")
+        exit(0)
+
+    print(f"Starting auto-labeling for {len(images)} images...")
+    processed = 0
+    skipped = 0
+
+    for img_path in images:
+        label_file = lbl_dir / f"{img_path.stem}.txt"
+        
+        # Skip if the human label already exists
+        if label_file.exists():
+            skipped += 1
+            continue
+            
+        results = model(str(img_path), conf=args.conf, verbose=False)[0]
+        
+        if len(results.boxes) > 0:
+            with open(label_file, "w") as f:
+                for box in results.boxes:
+                    cls_id = int(box.cls[0])
+                    # Get normalized xywh
+                    x_c, y_c, w, h = box.xywhn[0].tolist() 
+                    f.write(f"{cls_id} {x_c:.6f} {y_c:.6f} {w:.6f} {h:.6f}\n")
+            processed += 1
+
+    print(f"\n✅ Auto-labeling complete!")
+    print(f"   Generated labels: {processed}")
+    print(f"   Skipped (already labeled): {skipped}")
