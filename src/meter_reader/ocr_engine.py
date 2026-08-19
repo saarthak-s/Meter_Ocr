@@ -27,7 +27,29 @@ class MeterOCREngine:
             return " ".join(res_dict['rec_texts'])
             
         return ""
-
+    
+    def extract_unit(self, raw_text: str) -> str | None:
+        """Extracts standard utility units (kWh, kVAh) from the raw OCR text."""
+        if not raw_text:
+            return None
+            
+        # 1. Remove all spaces to catch OCR errors like "kw h" or "k v a h"
+        no_spaces = raw_text.replace(" ", "")
+        
+        # 2. Look exactly for kwh or kvah (case-insensitive)
+        unit_pattern = r"(?i)(kwh|kvah)"
+        match = re.search(unit_pattern, no_spaces)
+        
+        if match:
+            # 3. Standardize the capitalization for the final JSON
+            extracted = match.group(1).lower()
+            if extracted == "kwh":
+                return "kWh"
+            elif extracted == "kvah":
+                return "kVAh"
+                
+        return None
+    
     def validate_reading(self, raw_text: str) -> float | None:
         """Cleans the raw meter reading text into a strict float."""
         no_spaces = raw_text.replace(" ", "")

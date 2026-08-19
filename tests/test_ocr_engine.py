@@ -1,6 +1,6 @@
 # tests/test_ocr_engine.py
 import pytest
-from src.meter_reader.ocr_engine import MeterOCREngine
+from meter_reader.ocr_engine import MeterOCREngine
 
 
 @pytest.fixture

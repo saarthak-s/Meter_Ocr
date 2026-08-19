@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
-from src.meter_reader.pipeline import MeterPipeline
+from meter_reader.pipeline import MeterPipeline
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ import logging
 import argparse
 from pathlib import Path
 from ultralytics import YOLO
-from src.meter_reader.ocr_engine import MeterOCREngine
+from meter_reader.ocr_engine import MeterOCREngine
 
 # Configure structured logging
 logging.basicConfig(
@@ -44,6 +44,7 @@ class MeterPipeline:
 
         extracted_data = {
             "meter_reading": None,
+            "meter_unit": None,      # <-- Added unit key
             "raw_meter_reading": None,
             "serial_number": None,
             "raw_serial_number": None,
@@ -86,6 +87,7 @@ class MeterPipeline:
                     raw_text = self.ocr_engine.extract_text(temp_crop_path)
                     extracted_data["raw_meter_reading"] = raw_text
                     extracted_data["meter_reading"] = self.ocr_engine.validate_reading(raw_text)
+                    extracted_data["meter_unit"] = self.ocr_engine.extract_unit(raw_text)  # <-- Added unit extraction
                     extracted_data["detections"]["meter_reading_conf"] = round(conf, 4)
 
                 elif cls_id == 1:
