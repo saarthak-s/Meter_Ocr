@@ -114,8 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--failures", default="failures.json", help="Path to save the failed filenames")
     return p
 
-
-if __name__ == "__main__":
+def main():
     args = build_parser().parse_args()
     
     try:
@@ -161,3 +160,6 @@ if __name__ == "__main__":
             logger.warning(f"Batch completed with {len(failures)} failures. Details saved to {failures_file.absolute()}")
         else:
             logger.info(f"Batch complete! 0 failures. All results saved to {output_file.absolute()}")
+
+if __name__ == "__main__":
+    main()

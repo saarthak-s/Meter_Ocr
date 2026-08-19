@@ -28,6 +28,7 @@ which is then parsed into a clean numeric reading and serial number.
 
 ```
 Meter_Ocr/
+├── .github/workflows/ci.yml        # Automated GitHub Actions testing pipeline
 ├── dataset.yaml                    # YOLO dataset config (classes, paths)
 ├── pyproject.toml                  # Project metadata & dependencies
 ├── docs/examples/                  # Sample annotated images & OCR crops
@@ -253,7 +254,7 @@ download:
 pytest
 ```
 
-## Status / known limitations
+## Status 
 
 - `auto-labelling.py` references the draft model's path by default
   (`runs/detect/meter_detector-2/weights/best.pt`); since the draft
@@ -262,11 +263,7 @@ pytest
 - `pipeline.py` loads the final production model from `models/best.pt`
   by default — override with `--model` to point at your own trained
   weights.
-- The `meter-reader` console script declared in `pyproject.toml` expects
-  a `main()` function in `src/meter_reader/__init__.py`, which is not
-  yet implemented.
-- No CI workflow is currently configured to run `pytest` automatically
-  on push.
+
 
 ## License
 
