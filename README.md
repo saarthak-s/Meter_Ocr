@@ -155,6 +155,7 @@ python src/meter_reader/train.py \
     --batch 16 \
     --patience 25 \
     --name meter_detector_prod
+    --device 0   # Use 'cpu' for CPU, '0' for single GPU, or '0,1' for multi-GPU
 ```
 
 Training runs on CPU by default and saves the best weights to:

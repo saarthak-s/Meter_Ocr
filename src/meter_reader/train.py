@@ -11,6 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", default="runs/detect", help="Project directory to save results")
     p.add_argument("--name", default="meter_detector_prod", help="Experiment name for this training run")
     p.add_argument("--patience", type=int, default=25, help="Early stopping patience")
+    p.add_argument("--device", default="cpu", help="Compute device ('cpu', '0' for GPU, '0,1' for multi-GPU)")
     return p
 
 if __name__ == "__main__":
@@ -27,7 +28,7 @@ if __name__ == "__main__":
         project=args.project,
         name=args.name,
         patience=args.patience,
-        device="cpu" # Remove or set to 0 if running on a GPU machine later
+        device=args.device  
     )
     
     print("\n✅ Training complete!")
