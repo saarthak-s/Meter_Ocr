@@ -9,8 +9,8 @@ which is then parsed into a clean numeric reading and serial number.
 ## 📦 Resources
 
 - **Dataset (327 labeled meter images):** [Kaggle Dataset — meter_data](https://www.kaggle.com/datasets/saarthaksrivastav/meter-data)
-- **YOLOv8 training notebook (detector training + evaluation):** [Kaggle Notebook — meter_ocr](https://www.kaggle.com/code/saarthaksrivastav/meter-ocr)
-- **Trained YOLO detector weights & run outputs:** [Notebook Output](https://www.kaggle.com/code/saarthaksrivastav/meter-ocr/output)
+- **YOLOv8 training notebook (detector training + evaluation):** [Kaggle Notebook — meter_ocr](https://www.kaggle.com/code/saarthaksrivastav/meter-reading-detection)
+- **Trained YOLO detector weights & run outputs:** [Notebook Output](https://www.kaggle.com/code/saarthaksrivastav/meter-reading-detection/output)
 
 The dataset and trained detector weights are intentionally excluded
 from this repository (see `.gitignore`) and hosted on Kaggle instead,
