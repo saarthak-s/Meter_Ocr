@@ -20,7 +20,7 @@ directly.
 > **Note:** the Kaggle notebook covers only the YOLOv8 **detector**
 > (localizing the reading and serial-number regions). PaddleOCR is used
 > off-the-shelf for text recognition and is not fine-tuned or retrained
-> as part of this project.
+> as part of the kaggle project.
 
 ## How it works
 
