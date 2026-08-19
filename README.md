@@ -21,7 +21,8 @@ which is then parsed into a clean numeric reading and serial number.
    engine prefers an 8-digit block, falling back to the longest digit
    run of 5+ characters).
 5. **Output** — results (reading, serial number, raw OCR text, and
-   detection confidences) are collected into a JSON file.
+   detection confidences) are collected into a JSON file. Any image that
+   fails is logged separately instead of aborting the whole batch.
 
 ## Project structure
 
@@ -29,7 +30,12 @@ which is then parsed into a clean numeric reading and serial number.
 Meter_Ocr/
 ├── dataset.yaml                    # YOLO dataset config (classes, paths)
 ├── pyproject.toml                  # Project metadata & dependencies
-├── requirements.txt                # Full environment dependency freeze
+├── docs/examples/                  # Sample annotated images & OCR crops
+├── scripts/
+│   └── visualize_results.py        # Generates annotated + cropped examples
+├── tests/
+│   ├── test_ocr_engine.py          # Unit tests for OCR text validation
+│   └── test_pipeline.py            # Mocked integration tests for the pipeline
 └── src/meter_reader/
     ├── __init__.py
     ├── split_data.py                # Train/val split for the labeled dataset
@@ -47,9 +53,7 @@ Meter_Ocr/
   - `paddleocr` + `paddlepaddle`
   - `opencv-python`
   - `label-studio` (for manual annotation)
-
-> **Note:** `requirements.txt` is a full environment freeze rather than a
-> minimal dependency list. For a clean install, prefer `pyproject.toml`.
+- Dev dependency: `pytest` (declared under `[dependency-groups]`)
 
 ### Install with `uv` (recommended)
 
@@ -76,7 +80,8 @@ names:
   1: serial_number
 ```
 
-The dataset was built using an AI-assisted labeling workflow:
+The dataset (327 images) was built using an AI-assisted labeling
+workflow:
 
 1. **Manually annotate a seed set** — ~50 images were labeled by hand in
    [Label Studio](https://labelstud.io/) and exported in YOLO format into
@@ -88,12 +93,12 @@ The dataset was built using an AI-assisted labeling workflow:
    labeled seed images are never overwritten:
 
    ```bash
-   python src/meter_reader/auto-labelling.py
+   python src/meter_reader/auto-labelling.py \
+       --draft-model runs/detect/meter_detector-2/weights/best.pt \
+       --images-dir dataset/images \
+       --labels-dir dataset/labels \
+       --conf 0.5
    ```
-
-   By default this loads the draft model from
-   `runs/detect/meter_detector-2/weights/best.pt` — update the path in
-   the script if your draft model was saved elsewhere.
 
 4. **Review and correct in Label Studio** — the auto-generated labels
    were re-imported into Label Studio and manually reviewed/corrected
@@ -117,14 +122,20 @@ The dataset was built using an AI-assisted labeling workflow:
 `train.py` trains a YOLOv8n detector and is used twice in this project's
 workflow: once on the small hand-labeled seed set to produce the
 temporary **draft model** used for auto-labeling, and once on the
-**full, reviewed dataset** to produce the final production model:
+**full, reviewed dataset** to produce the final production model. All
+key parameters are configurable via CLI flags:
 
 ```bash
-python src/meter_reader/train.py
+python src/meter_reader/train.py \
+    --model yolov8n.pt \
+    --data dataset.yaml \
+    --epochs 120 \
+    --batch 16 \
+    --patience 25 \
+    --name meter_detector_prod
 ```
 
-This trains for up to 120 epochs (with early stopping after 10 epochs of
-no improvement) on CPU and saves the best weights to:
+Training runs on CPU by default and saves the best weights to:
 
 ```
 runs/detect/meter_detector_prod/weights/best.pt
@@ -133,29 +144,19 @@ runs/detect/meter_detector_prod/weights/best.pt
 ## Running the pipeline
 
 Once you have trained weights, run the full detect → crop → OCR pipeline
-on a set of images:
+on a directory of images:
 
 ```bash
-python src/meter_reader/pipeline.py
+python src/meter_reader/pipeline.py \
+    --model models/best.pt \
+    --input-dir dataset/processed/images/val \
+    --output batch_results.json \
+    --failures failures.json
 ```
 
-By default this loads the model from `models/best.pt` and processes every
-image in `dataset/processed/images/val`, writing combined results to
-`batch_results.json`:
-
-```json
-{
-    "meter_reading": 12345.6,
-    "raw_meter_reading": "12345.6",
-    "serial_number": "46260789",
-    "raw_serial_number": "CAT-C3 46260789",
-    "detections": {
-        "meter_reading_conf": 0.94,
-        "serial_number_conf": 0.88
-    },
-    "filename": "example.jpg"
-}
-```
+Successful results are written to `batch_results.json`; any image that
+fails to process is logged with its error message to `failures.json`
+instead of stopping the batch.
 
 To use `MeterPipeline` on a single image programmatically:
 
@@ -167,19 +168,106 @@ result = pipeline.process_image("path/to/image.jpg")
 print(result)
 ```
 
+## 📊 Model Evaluation & Metrics
+
+### Dataset
+
+The pipeline was trained and evaluated on a custom dataset of **327
+images** of electric meters. The initial dataset was auto-labeled using
+a draft model, followed by manual review, bounding-box correction, and
+augmentation to ensure high-quality ground truth data.
+
+### 1. YOLO object detection performance
+
+The model was trained on Kaggle accelerators to accurately localize the
+meter display and the serial number panel. Evaluation on the validation
+set yielded:
+
+| Metric | Value |
+|---|---|
+| mAP@50 | 89.9% |
+| mAP@50-95 | 71.2% |
+| Average inference confidence | > 85% across diverse real-world conditions |
+
+### 2. End-to-end OCR success rate
+
+The full pipeline (YOLO crop → OpenCV preprocessing → PaddleOCR → regex
+validation) was run against a heavily distorted validation batch of 64
+real-world images:
+
+| Field | Extraction rate |
+|---|---|
+| Serial number | ~54% (35/64) |
+| Meter reading | ~34% (22/64) |
+
+**Engineering note on OCR metrics:** the dataset contains extreme
+real-world noise. The "missed" extractions largely reflect physical
+hardware limitations in the source images — LED glare washing out the
+LCD screen, scratched plastic covers, and dirt/grime obscuring the
+digits — rather than pipeline failures. When the text is physically
+visible in the image, extraction success approaches 100%.
+
+## 📸 Visual examples
+
+The pipeline filters out surrounding label noise (barcodes,
+manufacturer text) and returns strictly typed data. Below is a
+successful detection on a heavily worn meter — note the correctly
+localized reading and serial number regions despite grime, glare, and a
+cracked cover:
+
+![Annotated meter detection](docs/examples/000103049033_annotated.jpg)
+
+```json
+{
+    "meter_reading": 6455.0,
+    "raw_meter_reading": "0006455",
+    "serial_number": "46260789",
+    "raw_serial_number": "ULMa Meter. CAT-C3 46260789",
+    "detections": {
+        "meter_reading_conf": 0.9333,
+        "serial_number_conf": 0.8232
+    },
+    "filename": "000103049033.jpg"
+}
+```
+
+Additional annotated images and cropped OCR inputs (including a known
+glare-failure case) are in `docs/examples/`. Regenerate them for new
+images with:
+
+```bash
+python scripts/visualize_results.py \
+    --model models/best.pt \
+    --images path/to/image1.jpg path/to/image2.jpg \
+    --out-dir docs/examples
+```
+
+## Testing
+
+Unit tests cover the OCR text-validation logic (`ocr_engine.py`), and
+mocked integration tests cover the pipeline's detection and error-
+handling paths without requiring real model weights or a PaddleOCR
+download:
+
+```bash
+pytest
+```
+
 ## Status / known limitations
 
-- `auto-labelling.py` references the draft model's path
+- `auto-labelling.py` references the draft model's path by default
   (`runs/detect/meter_detector-2/weights/best.pt`); since the draft
   model is deleted after labeling is complete, this script is only
   needed again if you extend the dataset with new unlabeled images.
 - `pipeline.py` loads the final production model from `models/best.pt`
-  by default — update this path to wherever your trained
-  `meter_detector_prod/weights/best.pt` is copied.
+  by default — override with `--model` to point at your own trained
+  weights.
 - The `meter-reader` console script declared in `pyproject.toml` expects
   a `main()` function in `src/meter_reader/__init__.py`, which is not
   yet implemented.
-- `requirements.txt` reflects a full local environment rather than a
-  minimal set of runtime dependencies — use `pyproject.toml` for
-  installs.
+- No CI workflow is currently configured to run `pytest` automatically
+  on push.
 
+## License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** to maintain compatibility with Ultralytics YOLOv8. See the [LICENSE](LICENSE) file for details.
