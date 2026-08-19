@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # You can pass specific test images via CLI, or use these defaults
     parser.add_argument("--images", nargs="+", default=[
         "dataset/processed/images/val/000103049033.jpg", # Known success case
-        "dataset/processed/images/val/000103154739.jpg"  # Known glare failure case
+        "dataset/processed/images/val/000150930417.jpg"  # Known glare failure case
     ], help="List of images to process")
     
     args = parser.parse_args()
