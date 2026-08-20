@@ -1,4 +1,3 @@
-# tests/test_pipeline.py
 import cv2
 import numpy as np
 import pytest
@@ -22,9 +21,9 @@ def dummy_image_path(tmp_path):
     cv2.imwrite(str(img_path), blank_img)
     return img_path
 
-
-@patch("src.meter_reader.pipeline.MeterOCREngine")
-@patch("src.meter_reader.pipeline.YOLO")
+# FIX 1: Removed 'src.' from the patch paths
+@patch("meter_reader.pipeline.MeterOCREngine")
+@patch("meter_reader.pipeline.YOLO")
 def test_pipeline_no_detections(mock_yolo, mock_ocr, dummy_weights_path, dummy_image_path):
     """Verifies pipeline returns a clean null dict when no boxes are detected."""
     mock_yolo_instance = MagicMock()
@@ -37,6 +36,7 @@ def test_pipeline_no_detections(mock_yolo, mock_ocr, dummy_weights_path, dummy_i
     result = pipeline.process_image(dummy_image_path)
 
     assert result["meter_reading"] is None
+    assert result["meter_unit"] is None           # FIX 2: Added missing assertion
     assert result["serial_number"] is None
     assert result["detections"]["meter_reading_conf"] is None
     assert result["detections"]["serial_number_conf"] is None
@@ -44,7 +44,8 @@ def test_pipeline_no_detections(mock_yolo, mock_ocr, dummy_weights_path, dummy_i
 
 def test_pipeline_missing_file_raises_error(dummy_weights_path):
     """Verifies that passing a non-existent image path raises FileNotFoundError."""
-    with patch("src.meter_reader.pipeline.YOLO"), patch("src.meter_reader.pipeline.MeterOCREngine"):
+    # FIX 1: Removed 'src.' from the patch paths here as well
+    with patch("meter_reader.pipeline.YOLO"), patch("meter_reader.pipeline.MeterOCREngine"):
         pipeline = MeterPipeline(yolo_model_path=dummy_weights_path)
         with pytest.raises(FileNotFoundError):
             pipeline.process_image("non_existent_image.jpg")
