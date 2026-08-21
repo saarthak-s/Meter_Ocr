@@ -210,7 +210,6 @@ set yielded:
 |---|---|
 | mAP@50 | 89.9% |
 | mAP@50-95 | 71.2% |
-| Average inference confidence | > 85% across diverse real-world conditions |
 
 *Full YOLO detector training run, logs, and evaluation output are
 available in the
